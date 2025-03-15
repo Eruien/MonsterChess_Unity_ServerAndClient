@@ -662,3 +662,498 @@ public override void Death()
 <img src="Image/Server.png" width="600" height="350"/>
 
 <img src="Image/InGame.png" width="600" height="350"/>
+
+<details>
+<summary> Server</summary>
+	
+```cs
+
+// 비동기적으로 클라이언트가 접속하는걸 기다린다.
+public class Listener
+{
+    Func<Session> m_SessionFactory;
+    Socket m_Socket;
+    SocketAsyncEventArgs m_ListenArgs = new SocketAsyncEventArgs();
+
+    // 리스닝 소켓 바인딩 리스닝, 이벤트 등록
+    public void Init(Func<Session> sessionFunc, int listenCount)
+    {
+        string host = Dns.GetHostName();
+        IPHostEntry ipHost = Dns.GetHostEntry(host);
+        IPAddress ipAddr = IPAddress.Parse("192.168.0.5");
+        IPEndPoint endPoint = new IPEndPoint(ipAddr, Global.g_PortNumber);
+        m_Socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+        m_Socket.Bind(endPoint);
+        m_Socket.Listen(listenCount);
+
+        m_ListenArgs.Completed += OnAcceptCompleted;
+        m_SessionFactory += sessionFunc;
+    }
+
+    public void Start()
+    {
+        RgisterAccept();
+    }
+
+    // 비동기적으로 클라이언트가 접속하는걸 기다리며 접속할 경우 pending이 false가 된다.
+    void RgisterAccept()
+    {
+        m_ListenArgs.AcceptSocket = null;
+
+        bool pending = m_Socket.AcceptAsync(m_ListenArgs);
+        if (pending == false)
+            OnAcceptCompleted(null, m_ListenArgs);
+    }
+
+    // 클라이언트가 접속을 시도했을 때 별다른 에러가 없다면 세션을 생성해준다.
+    void OnAcceptCompleted(object sender, SocketAsyncEventArgs args)
+    {
+        if (args.SocketError == SocketError.Success)
+        {
+            Console.WriteLine("클라이언트와 연결 성공");
+
+            try
+            {
+                Session session = m_SessionFactory.Invoke();
+                session.Init(args.AcceptSocket);
+                session.Start();
+                session.OnConnect();
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine($"Listener -> OnAcceptCompleted : {e}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"Listener -> OnAcceptCompleted : {args.SocketError}");
+        }
+        RgisterAccept();
+    }
+}
+
+// 클라이언트에서 연결을 성공했을 때 세션 생성
+public class Connector
+{
+    Func<Session> m_SessionFactory;
+  
+    // 이벤트 등록 소켓 임시 생성 후 세션에게 넘겨줌
+    public void Connect(EndPoint endPoint, Func<Session> SessionFunc)
+    {
+        Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        m_SessionFactory += SessionFunc;
+
+        SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+        args.Completed += OnConnectCompleted;
+        args.RemoteEndPoint = endPoint;
+        args.UserToken = socket;
+        
+        RegisterConnect(args);
+    }
+
+    // 서버와 연결을 시도했고 대기가 없을 경우 pending은 false 
+    public void RegisterConnect(SocketAsyncEventArgs args)
+    {
+        Socket socket = args.UserToken as Socket;
+
+        if (socket == null) return;
+ 
+        bool pending = socket.ConnectAsync(args);
+        if (pending == false)
+            OnConnectCompleted(null, args);
+    }
+
+    // 별다른 에러가 없으면 서버랑 연결후에 클라이언트 세션을 생성한다.
+    public void OnConnectCompleted(object sender, SocketAsyncEventArgs args)
+    {
+        if (args.SocketError == SocketError.Success)
+        {
+            Console.WriteLine("서버와 연결에 성공");
+            Session m_Session = m_SessionFactory.Invoke();
+            m_Session.Init(args.UserToken as Socket);
+            m_Session.Start();
+            m_Session.OnConnect();
+        }
+        else
+        {
+            Console.WriteLine($"Connector : {args.SocketError}");
+        }
+       
+    }
+}
+
+// ServerSession, ClientSession의 베이스가 되는 클래스
+// 패킷을 비동기적으로 전송, 받는 역할을 한다.
+abstract public class Session
+{
+    // 세션 하나당 소켓 하나
+    Socket m_Socket;
+    int m_Disconnected = 0;
+    SocketAsyncEventArgs m_SendArgs = new SocketAsyncEventArgs();
+    SocketAsyncEventArgs m_RecvArgs = new SocketAsyncEventArgs();
+    RecvBuffer m_RecvBuffer = new RecvBuffer(65535);
+    object m_Lock = new object();
+
+    public bool IsOnConnected = false;
+    
+    Queue<ArraySegment<byte>> m_SendQueue = new Queue<ArraySegment<byte>>();
+    List<ArraySegment<byte>> m_PendingList = new List<ArraySegment<byte>>();
+    List<ArraySegment<byte>> m_RecvBufferList = new List<ArraySegment<byte>>();
+
+    // 추가적인 내용은 자식들이 결정할 수 있도록
+    public abstract void OnConnect();
+    public abstract void OnSend(int numOfBytes);
+    public abstract int OnRecv(ArraySegment<byte> buffer);
+    public abstract void OnDisconnect();
+
+    // 소켓 등록, 이벤트 등록
+    public void Init(Socket socket)
+    {
+        m_Socket = socket;
+        m_SendArgs.Completed += OnSendCompleted;
+        m_RecvArgs.Completed += OnRecvCompleted;
+    }
+
+    public void Start()
+    {
+        RegisterRecv();
+    }
+
+    패킷을 보낼때 큐에 모아서 보낸다. 배열 형태의 메시지
+    public void Send(List<ArraySegment<byte>> segmentList)
+    {
+        if (segmentList.Count == 0) return;
+
+        lock (m_Lock)
+        {
+            foreach (var arg in segmentList)
+                m_SendQueue.Enqueue(arg);
+
+            if (m_PendingList.Count == 0)
+                RegisterSend();
+        }
+    }
+
+    패킷을 보낼때 큐에 모아서 보낸다. 
+    public void Send(ArraySegment<byte> segment)
+    {
+        lock (m_Lock)
+        {
+            m_SendQueue.Enqueue(segment);
+
+            if (m_PendingList.Count == 0)
+                RegisterSend();
+        }
+    }
+
+    // 다른곳에서 Send했을 때 모아서 쏘는 역할
+    void RegisterSend()
+    {
+        if (m_Disconnected == 1) return;
+
+        while (m_SendQueue.Count > 0)
+        {
+            ArraySegment<byte> buff = m_SendQueue.Dequeue();
+            m_PendingList.Add(buff);
+        }
+
+        m_SendArgs.BufferList = m_PendingList;
+
+        try
+        {
+            bool pending = m_Socket.SendAsync(m_SendArgs);
+
+            if (pending == false)
+                OnSendCompleted(null, m_SendArgs);
+        }
+        catch ( Exception e)
+        {
+            Console.WriteLine($"Session -> SendAsync Error : {e}");
+        }
+        
+    }
+
+    // 보내는것에 성공했을 때 몇 바이트가 보내졌는지랑 소켓 에러가 있는지 판정
+    void OnSendCompleted(object sender, SocketAsyncEventArgs args)
+    {
+        lock (m_Lock)
+        {
+            if (args.BytesTransferred > 0 && args.SocketError == SocketError.Success)
+            {
+                try
+                {
+                    Console.WriteLine("메시지 전송 성공");
+                    m_SendArgs.BufferList = null;
+                    m_PendingList.Clear();
+                   
+                    //OnSend(m_SendArgs.BytesTransferred);
+
+                    if (m_SendQueue.Count > 0)
+                        RegisterSend();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Session -> OnSendCompletedError : {e}");
+                }
+            }
+            else
+            {
+                DisConnect();
+            }
+        }
+    }
+
+    // 비동기적으로 메시지가 오는걸 기다리고 있음
+    void RegisterRecv()
+    {
+        m_RecvArgs.BufferList = null;
+        Clear();
+
+        ArraySegment<byte> segment = m_RecvBuffer.WriteSegemnt;
+       
+        m_RecvArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
+        bool pending = m_Socket.ReceiveAsync(m_RecvArgs);
+        if (pending == false)
+            OnRecvCompleted(null, m_RecvArgs);
+    }
+
+    // 성공적으로 패킷을 받았을 때 별다른 에러가 없다면 패킷을 역직렬화 해서 읽음
+    void OnRecvCompleted(object sender, SocketAsyncEventArgs args)
+    {
+        if (args.SocketError == SocketError.Success && args.BytesTransferred > 0)
+        {
+            //Console.WriteLine("메시지를 성공적으로 받음");
+            m_RecvBuffer.OnWrite(args.BytesTransferred);
+            // 읽는건 컨텐츠 딴에 맡김
+            int readSize = OnRecv(m_RecvBuffer.ReadSegemnt);
+
+            m_RecvBuffer.OnRead(readSize);
+
+            if (readSize < args.BytesTransferred)
+            {
+                Console.WriteLine("Session -> OnRecvCompleted : 전송받은것보다 적게 읽어냈습니다. ");
+                return;
+            }
+
+            RegisterRecv();
+
+        }
+        else
+        {
+            DisConnect();
+        }
+    }
+
+    // 연결 해제
+    void DisConnect()
+    {
+        if (Interlocked.Exchange(ref m_Disconnected, 1) == 1)
+            return;
+        m_Socket.Shutdown(SocketShutdown.Both);
+        m_Socket.Close();
+        Clear();
+    }
+
+    // 메시지 큐 비우기
+    void Clear()
+    {
+        lock (m_Lock)
+        {
+            m_SendQueue.Clear();
+            m_PendingList.Clear();
+        }
+    }
+}
+
+```
+
+</details>
+
+<details>
+<summary> Packet</summary>
+	
+```cs
+// 사용한 패킷의 종류
+enum PacketType
+{
+    None,
+    LaboratoryPacket,
+    C_GameStartPacket,
+    S_BroadcastGameStartPacket,
+    S_SetInitialDataPacket,
+    S_LabListPacket,
+    C_MonsterPurchasePacket,
+    S_PurchaseAllowedPacket,
+    C_MonsterCreatePacket,
+    S_BroadcastMonsterCreatePacket,
+    S_BroadcastMonsterStatePacket,
+    S_BroadcastMonsterDeathPacket,
+    C_SetPositionPacket,
+    S_BroadcastSetPositionPacket,
+    C_ConfirmMovePacket,
+    S_BroadcastMovePacket,
+    C_AttackDistancePacket,
+    C_HitPacket,
+    S_BroadcastHitPacket,
+    C_ChangeTargetPacket,
+    S_BroadcastChangeTargetPacket,
+}
+
+// 모든 패킷의 인터페이스
+public interface IPacket
+{
+    public ushort PacketSize { get; }
+    public ushort PacketID { get; }
+    void Read(ArraySegment<byte> segment);
+    ArraySegment<byte> Write();
+}
+
+// 게임의 시작을 알리는 패킷
+public class C_GameStartPacket : IPacket
+{
+    public bool m_IsGameStart = false;
+
+    public ushort PacketSize { get { return sizeof(ushort) * 2 + sizeof(bool) * 1; } }
+    public ushort PacketID { get { return (ushort)PacketType.C_GameStartPacket; } }
+
+    // 피캣을 역직렬화 해서 읽는다
+    public void Read(ArraySegment<byte> segment)
+    {
+        int count = 0;
+        count += sizeof(ushort);
+        count += sizeof(ushort);
+        this.m_IsGameStart = BitConverter.ToBoolean(segment.Array, segment.Offset + count);
+        count += sizeof(bool);
+    }
+
+    // 패킷을 직렬화해서 세그먼트에 담는다.
+    public ArraySegment<byte> Write()
+    {
+        int count = 0;
+        ArraySegment<byte> segment = SendBufferHelper.Open(4096);
+        Array.Copy(BitConverter.GetBytes(this.PacketSize), 0, segment.Array, segment.Offset + count, sizeof(ushort));
+        count += sizeof(ushort);
+        Array.Copy(BitConverter.GetBytes(this.PacketID), 0, segment.Array, segment.Offset + count, sizeof(ushort));
+        count += sizeof(ushort);
+        Array.Copy(BitConverter.GetBytes(this.m_IsGameStart), 0, segment.Array, segment.Offset + count, sizeof(bool));
+        count += sizeof(bool);
+
+        return SendBufferHelper.Close(count);
+    }
+}
+
+// 추상 팩토리 패턴을 이용해 여러 패킷의 생성 함수가 딕셔너리에 저장되어 있다.
+public class PacketManager
+{
+    static PacketManager m_PacketMgr = new PacketManager();
+    public static PacketManager Instance { get { return m_PacketMgr; } }
+
+    // key 패킷의 번호, value 패킷마다 생성 함수 저장
+    Dictionary<ushort, Func<ArraySegment<byte>, IPacket>> m_MakePacketDict = new Dictionary<ushort, Func<ArraySegment<byte>, IPacket>>();
+    // 패킷마다 생성되고 나서 어떤 행동을 할지 딕셔너리에 저장
+    Dictionary<ushort, Action<Session, IPacket>> m_RunFunctionDict = new Dictionary<ushort, Action<Session, IPacket>>();
+
+    public PacketManager()
+    {
+        Init();
+    }
+
+    void Init()
+    {
+        m_MakePacketDict.Add((ushort)PacketType.C_GameStartPacket, MakePacket<C_GameStartPacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_GameStartPacket, PacketHandler.Instance.C_GameStartPacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_MonsterPurchasePacket, MakePacket<C_MonsterPurchasePacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_MonsterPurchasePacket, PacketHandler.Instance.C_MonsterPurchasePacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_MonsterCreatePacket, MakePacket<C_MonsterCreatePacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_MonsterCreatePacket, PacketHandler.Instance.C_MonsterCreatePacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_SetPositionPacket, MakePacket<C_SetPositionPacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_SetPositionPacket, PacketHandler.Instance.C_SetPositionPacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_ConfirmMovePacket, MakePacket<C_ConfirmMovePacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_ConfirmMovePacket, PacketHandler.Instance.C_ConfirmMovePacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_AttackDistancePacket, MakePacket<C_AttackDistancePacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_AttackDistancePacket, PacketHandler.Instance.C_AttackDistancePacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_HitPacket, MakePacket<C_HitPacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_HitPacket, PacketHandler.Instance.C_HitPacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_ChangeTargetPacket, MakePacket<C_ChangeTargetPacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_ChangeTargetPacket, PacketHandler.Instance.C_ChangeTargetPacketHandler);
+    }
+
+    // 패킷을 받을 경우 해당 되는 번호가 있는지 체크하고 번호가 있다면 해당되는 패킷을 생성 패킷의 행동까지 바로 실행
+    public int OnRecvPacket(Session session, ArraySegment<byte> buffer)
+    {
+        // packet 번호에 따라 패킷 생성
+        // 패킷 번호에 따라 맞는 함수 실행
+        int count = 0;
+        count += sizeof(ushort);
+        ushort packetID = BitConverter.ToUInt16(buffer.Array, buffer.Offset + count);
+
+        Func<ArraySegment<byte>, IPacket> func = null;
+
+        
+        if (m_MakePacketDict.TryGetValue(packetID, out func))
+        {
+            IPacket packet = func.Invoke(buffer);
+
+            Action<Session, IPacket> action = null;
+
+            if (m_RunFunctionDict.TryGetValue(packetID, out action))
+            {
+                action.Invoke(session, packet);
+                return packet.PacketSize;
+            }
+        }
+
+        return 0;
+    }
+
+   // 제네릭으로 패킷의 종류마다 컴파일 타임에 생성
+    T MakePacket<T>(ArraySegment<byte> buffer) where T: IPacket, new()
+    {
+        T pkt = new T();
+        pkt.Read(buffer);
+
+        return pkt; 
+    }
+}
+
+// 패킷 매니저에서 패킷이 들어오면 자동으로 실행하는 핸들러 함수
+// 게임 스타트 패킷에 해당되는 패킷 번호가 들어오면 패킷을 생성하고 아래 함수를 실행한다.
+ public void C_GameStartPacketHandler(Session session, IPacket packet)
+ {
+     C_GameStartPacket gameStartPacket = packet as C_GameStartPacket;
+     S_BroadcastGameStartPacket broadcastGameStartPacket = new S_BroadcastGameStartPacket();
+     ClientSession clientSession = session as ClientSession;
+
+     if (clientSession.m_GameRoom == null) return;
+
+     if (clientSession.m_SessionTeam == Team.RedTeam)
+     {
+         Program.g_RedTeamGameStart = true;
+     }
+     else if (clientSession.m_SessionTeam == Team.BlueTeam)
+     {
+         Program.g_BlueTeamGameStart = true;
+     }
+
+     if (Program.g_RedTeamGameStart && Program.g_BlueTeamGameStart)
+     {
+         broadcastGameStartPacket.m_IsGameStart = true;
+         Program.g_IsGameStart = true;
+         BaseMonster.m_SearchNearTarget.Invoke();
+     }
+
+     Room room = clientSession.m_GameRoom;
+     room.BroadCast(broadcastGameStartPacket.Write());
+ }
+```
+
+</details>
+
