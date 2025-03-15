@@ -1,7 +1,8 @@
 # MonsterChess
+* 플레이 영상 : <https://www.youtube.com/watch?v=qKIiIdELATE>
 * 다운로드 : <https://naver.me/x0UgC7i8>
   
-<img src="Image/Echo.png" width="600" height="350"/>
+<img src="Image/MonsterChess.png" width="600" height="350"/>
 
 ***
 
@@ -12,11 +13,4 @@
 # Behaivor tree
 * 몬스터의 행동을 결정하는 트리
   
-* PC
-
-<img src="Image/PC.gif" width="600" height="350"/>
-
-* Mobile
-  
-<img src="Image/Mobile.gif" width="600" height="350"/>
 
