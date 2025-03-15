@@ -655,5 +655,10 @@ public override void Death()
 </details>
 
 # Server
+* 비동기 함수 Recv, Send를 이용해 패킷을 주고 받습니다.
+  
+<img src="Image/ServerAndClient.gif" width="600" height="350"/>
 
+<img src="Image/Server.png" width="600" height="350"/>
 
+<img src="Image/InGame.gif" width="600" height="350"/>
