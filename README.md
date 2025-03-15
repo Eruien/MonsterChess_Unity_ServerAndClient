@@ -475,7 +475,99 @@ namespace ServerContent
     }
 }
 
+ // 블랙보드 키값 세팅 json 파일을 이용해서 데이터를 가져와 적용한다.
+ protected override void SetBlackBoardKey()
+ {
+     // 클라에서 이름 정보 받아오면 이름 정보로 교체
+     m_BlackBoard.m_TargetObject.Key = m_TargetLab;
+     m_BlackBoard.m_HP.Key = Managers.Data.m_MonsterDict[m_Name].hp;
+     m_BlackBoard.m_AttackDistance.Key = Managers.Data.m_MonsterDict[m_Name].attackDistance;
+     m_BlackBoard.m_AttackRange.Key = Managers.Data.m_MonsterDict[m_Name].attackRange;
+     m_BlackBoard.m_AttackRangeCorrectionValue.Key = Managers.Data.m_MonsterDict[m_Name].attackRangeCorrectionValue;
+     m_BlackBoard.m_DefaultAttackDamage.Key = Managers.Data.m_MonsterDict[m_Name].defaultAttackDamage;
+     m_BlackBoard.m_MoveSpeed.Key = Managers.Data.m_MonsterDict[m_Name].moveSpeed;
+     m_BlackBoard.m_ProjectTileSpeed.Key = Managers.Data.m_MonsterDict[m_Name].projectTileSpeed;
+ }
 
+// 캐릭터에 맞는 Behavior Tree를 생성한다.
+private void MakeBehaviorTree()
+{
+    // HP관리
+    // 공격 관리
+    Selector attackMgr = new Selector();
+    m_Selector.AddChild(attackMgr);
+
+    SetSequence<object, b_Object> checkTargetLive = new SetSequence<object, b_Object>(KeyQuery.IsSet, m_BlackBoard.m_TargetObject);
+    attackMgr.AddChild(checkTargetLive);
+
+    Sequence<float, b_float> checkAttackRange = new Sequence<float, b_float>(KeyQuery.IsLessThanOrEqualTo, m_BlackBoard.m_AttackRange.Key, m_BlackBoard.m_AttackDistance);
+    checkTargetLive.AddChild(checkAttackRange);
+
+    Action attackAction = new Action(Attack);
+    checkAttackRange.AddChild(attackAction);
+
+    // 이동 관리
+    Selector moveMgr = new Selector();
+    m_Selector.AddChild(moveMgr);
+
+    SetSequence<object, b_Object> move = new SetSequence<object, b_Object>(KeyQuery.IsSet, m_BlackBoard.m_TargetObject);
+    moveMgr.AddChild(move);
+    Action moveAction = new Action(MoveToPosition);
+
+    move.AddChild(moveAction);
+}
+
+// 위의 Action으로 넣어준 함수 두가지
+
+// 공격하는 패킷을 클라이언트로 쏘아준다.
+ private ReturnCode Attack()
+ {
+     m_MonsterState = MonsterState.Attack;
+     S_BroadcastMonsterStatePacket monsterStatePacket = new S_BroadcastMonsterStatePacket();
+     monsterStatePacket.m_MonsterId = (ushort)m_ObjectId;
+     monsterStatePacket.m_CurrentState = (ushort)m_MonsterState;
+     monsterStatePacket.m_PosX = m_Position.X;
+     monsterStatePacket.m_PosY = m_Position.Y;
+     monsterStatePacket.m_PosZ = m_Position.Z;
+
+     TransportPacket(() => Program.g_GameRoom.BroadCast(monsterStatePacket.Write()));
+     
+     return ReturnCode.SUCCESS;
+ }
+
+// 몬스터의 상태랑 현재 위치를 패킷으로 쏘아보낸다. 
+private ReturnCode MoveToPosition()
+{
+    m_MonsterState = MonsterState.Move;
+    Vector3 dir = m_Target.m_Position - m_Position;
+
+    if (dir == Vector3.Zero)
+    {
+        dir = Vector3.Zero;
+    }
+    else
+    {
+        dir = Vector3.Normalize(dir);
+    }
+    float fixY = m_Position.Y;
+    m_Position += dir * m_BlackBoard.m_MoveSpeed.Key * (float)LTimer.m_SPF;
+    m_Position = new Vector3(m_Position.X, fixY, m_Position.Z);
+    // 패킷 보내기
+    S_BroadcastMovePacket movePacket = new S_BroadcastMovePacket();
+    movePacket.m_MonsterId = (ushort)m_ObjectId;
+    movePacket.m_PosX = m_Position.X;
+    movePacket.m_PosY = m_Position.Y;
+    movePacket.m_PosZ = m_Position.Z;
+
+    S_BroadcastMonsterStatePacket monsterStatePacket = new S_BroadcastMonsterStatePacket();
+    monsterStatePacket.m_MonsterId = (ushort)m_ObjectId;
+    monsterStatePacket.m_CurrentState = (ushort)m_MonsterState;
+
+    TransportPacket(() => Program.g_GameRoom.BroadCast(monsterStatePacket.Write()));
+    TransportPacket(() => Program.g_GameRoom.BroadCast(movePacket.Write()));
+    
+    return ReturnCode.SUCCESS;
+}
 
 ```
 
