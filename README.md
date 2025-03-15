@@ -1,5 +1,5 @@
 # MonsterChess
-* 다운로드 : <https://store.steampowered.com/app/3132180/Echo/>
+* 다운로드 : <https://naver.me/x0UgC7i8>
   
 <img src="Image/Echo.png" width="600" height="350"/>
 
