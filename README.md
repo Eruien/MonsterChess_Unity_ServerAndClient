@@ -21,18 +21,22 @@
 	
 ```cs
 // 몬스터가 기본 베이스로 쓰는 변수를 모아놓은 BlackBoard이다. 
-public class BlackBoard
+namespace ServerContent
 {
-    public b_Object m_TargetObject = new b_Object();
-    public b_float m_HP = new b_float();
-    public b_float m_AttackDistance = new b_float();
-    public b_float m_AttackRange = new b_float();
-    public b_float m_AttackRangeCorrectionValue = new b_float();
-    public b_float m_DefaultAttackDamage = new b_float();
-    public b_float m_MoveSpeed = new b_float();
-    public b_float m_ProjectTileSpeed = new b_float();
+    public class BlackBoard
+    {
+        public b_Object m_TargetObject = new b_Object();
+        public b_float m_HP = new b_float();
+        public b_float m_AttackDistance = new b_float();
+        public b_float m_AttackRange = new b_float();
+        public b_float m_AttackRangeCorrectionValue = new b_float();
+        public b_float m_DefaultAttackDamage = new b_float();
+        public b_float m_MoveSpeed = new b_float();
+        public b_float m_ProjectTileSpeed = new b_float();
+    }
 }
 
+// Selector, Sequence 노드 정의
 namespace ServerContent
 {
     // 노드를 만들기 위한 최상위 부모이다.
@@ -366,6 +370,112 @@ namespace ServerContent
         }
     }
 }
+
+// Behavior Tree에서 값 끼리 비교를 선택했을 때 비교해주는 함수
+namespace ServerContent
+{
+    public class DecorateFunc<T> where T : IComparable
+    {
+        // 값이 같은지 비교 
+        static public bool IsEqualTo(T keyValue, T blackBoardKey)
+        {
+            if (blackBoardKey.CompareTo(keyValue) == 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        // 값이 다른지 비교
+        static public bool IsNotEqualTo(T keyValue, T blackBoardKey)
+        {
+            if (blackBoardKey.CompareTo(keyValue) != 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        // 값이 작은지 비교 
+        static public bool IsLessThan(T keyValue, T blackBoardKey)
+        {
+            if (blackBoardKey.CompareTo(keyValue) < 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        // 값이 작거나 같은지 비교 
+        static public bool IsLessThanOrEqualTo(T keyValue, T blackBoardKey)
+        {
+            if (blackBoardKey.CompareTo(keyValue) <= 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        // 값이 큰지 비교 
+        static public bool IsGreaterThan(T keyValue, T blackBoardKey)
+        {
+            if (blackBoardKey.CompareTo(keyValue) > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        // 값이 크거나 같은지 비교  
+        static public bool IsGreaterThanOrEqualTo(T keyValue, T blackBoardKey)
+        {
+            if (blackBoardKey.CompareTo(keyValue) >= 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    public class SetDecorateFunc<T, K> where K : IBlackBoardKey<T>
+    {
+        // 값이 유효한지 
+        static public bool IsSet(K blackBoardKey)
+        {
+            if (blackBoardKey.Key == null) return false;
+
+            if (blackBoardKey.Key is null)
+                return false; // 참조형이 null이면 값 없음
+            
+            if (EqualityComparer<T>.Default.Equals(blackBoardKey.Key, default(T)))
+                return false; // 값 형식이 기본값(0, false 등)이면 값 없음
+
+            return true; // 값이 있는 경우
+        }
+
+        // 값이 유효하지 않은지
+        static public bool IsNotSet(K blackBoardKey)
+        {
+            if (blackBoardKey.Key == null) return true;
+
+            if (blackBoardKey.Key is null)
+                return true; // 참조형이 null이면 값 없음
+
+            if (EqualityComparer<T>.Default.Equals(blackBoardKey.Key, default(T)))
+                return true; // 값 형식이 기본값(0, false 등)이면 값 없음
+
+            return false; // 값이 있는 경우
+        }
+    }
+}
+
+
 
 ```
 
