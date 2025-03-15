@@ -661,4 +661,4 @@ public override void Death()
 
 <img src="Image/Server.png" width="600" height="350"/>
 
-<img src="Image/InGame.gif" width="600" height="350"/>
+<img src="Image/InGame.png" width="600" height="350"/>
