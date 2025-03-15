@@ -10,7 +10,9 @@
 * 인력 구성 : 1명
 * 사용언어 및 개발환경 : C#, Unity
 
-# Behaivor tree
-* 몬스터의 행동을 결정하는 트리
+# Behavior Tree
+* 몬스터의 AI를 Behavior Tree를 이용해 만들었습니다.
+  
+<img src="Image/BehaviorTree.gif" width="600" height="350"/>
   
 
