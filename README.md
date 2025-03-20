@@ -1215,14 +1215,14 @@ public class PacketManager
 </details>
 
 # Data Manager
-* json 데이터를 파싱해서 딕셔너리에 저장
+* Json 데이터를 파싱해서 딕셔너리에 저장
 * 싱글턴 패턴으로 제작해서 전역으로 사용 가능 
 
 <details>
 <summary>Json Data</summary>
 	
 ```cs
-// json 파일 
+// Json 파일 
 {
   "monsterStat": [
     {
@@ -1337,7 +1337,7 @@ public interface IDict<Key, Value>
     Dictionary<Key, Value> MakeDict();
 }
 
-// 위의 json 데이터와 일치하게 변수 이름 설정
+// 위의 Json 데이터와 일치하게 변수 이름 설정
 [Serializable]
 public class MonsterStat
 {
@@ -1356,10 +1356,10 @@ public class MonsterStat
 [Serializable]
 public class MonsterData : IDict<string, MonsterStat>
 {
-    // json 파일이랑 이름을 맞춰줌(MonsterStat)
+    // Json 파일이랑 이름을 맞춰줌(MonsterStat)
     public List<MonsterStat> monsterStat = new List<MonsterStat>();
 
-    // json에서 파싱해온 데이터를 딕셔너리에 넣어줌
+    // Json에서 파싱해온 데이터를 딕셔너리에 넣어줌
     public Dictionary<string, MonsterStat> MakeDict()
     {
         Dictionary<string, MonsterStat> dict = new Dictionary<string, MonsterStat>();
@@ -1371,19 +1371,19 @@ public class MonsterData : IDict<string, MonsterStat>
     }
 }
 
-// json 데이터를 파싱
+// Json 데이터를 파싱
 public class DataManager
 {
-    // json 데이터를 담을 딕셔너리 생성 
+    // Json 데이터를 담을 딕셔너리 생성 
     public Dictionary<string, MonsterStat> monsterDict { get; private set; } = new Dictionary<string, MonsterStat>();
 
-    // json data Load
+    // Json Data Load
     public void Init()
     {
         monsterDict = LoadJson<MonsterData, string, MonsterStat>("MonsterData").MakeDict();
     }
 
-    // 원하는 경로에서 json 데이터를 읽어와 딕셔너리 형태로 반환
+    // 원하는 경로에서 Json 데이터를 읽어와 딕셔너리 형태로 반환
     Loader LoadJson<Loader, Key, Value>(string path) where Loader : IDict<Key, Value>
     {
         TextAsset textAsset = Managers.Resource.Load<TextAsset>($"GameData/{path}");
