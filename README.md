@@ -1161,6 +1161,7 @@ public class PacketManager
 
 # 팩토리 메서드 패턴
 * 클래스의 생성을 자신이 생성하는게 아니라 다른 메서드에게 위임
+  
 <summary>팩토리 메서드 패턴 코드</summary>
 
 ```cs
