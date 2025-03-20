@@ -17,7 +17,7 @@
 <img src="Image/BehaviorTree.gif" width="600" height="350"/>
 
 <details>
-<summary> Behavior Tree(Server)</summary>
+<summary>Behavior Tree(Server) 코드</summary>
 	
 ```cs
 // 몬스터가 기본 베이스로 쓰는 변수를 모아놓은 BlackBoard이다. 
@@ -576,7 +576,7 @@ private ReturnCode MoveToPosition()
 * 클라이언트에선 서버에서 보내준 상태를 받아와서 상태에 따라 애니메이션을 재생시켜줍니다.
 
 <details>
-<summary> Behavior Tree(Client)</summary>
+<summary> Behavior Tree(Client) 코드</summary>
 	
 ```cs
 // 브로드캐스트 된 패킷을 받아 역직렬화 하고 몬스터 ID를 이용해 해당하는 몬스터에게 현재 상태를 넣어준다.
@@ -664,7 +664,7 @@ public override void Death()
 <img src="Image/InGame.png" width="600" height="350"/>
 
 <details>
-<summary> Server</summary>
+<summary> Server 코드</summary>
 	
 ```cs
 
@@ -971,7 +971,7 @@ abstract public class Session
 </details>
 
 <details>
-<summary> Packet</summary>
+<summary>Packet 코드</summary>
 	
 ```cs
 // 사용한 패킷의 종류
