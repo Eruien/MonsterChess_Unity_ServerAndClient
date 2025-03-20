@@ -1157,3 +1157,58 @@ public class PacketManager
 
 </details>
 
+<details>
+
+<summary>팩토리 메서드 패턴 코드</summary>
+
+```cs
+// 팩토리 메서드 패턴을 이용해 여러 패킷의 생성 함수가 딕셔너리에 저장되어 있다.
+public class PacketManager
+{
+    static PacketManager m_PacketMgr = new PacketManager();
+    public static PacketManager Instance { get { return m_PacketMgr; } }
+
+    // key 패킷의 번호, value 패킷마다 생성 함수 저장
+    Dictionary<ushort, Func<ArraySegment<byte>, IPacket>> m_MakePacketDict = new Dictionary<ushort, Func<ArraySegment<byte>, IPacket>>();
+    
+    // 생성을 넘겨 받을 함수를 딕셔너리에 등록
+    void Init()
+    {
+        m_MakePacketDict.Add((ushort)PacketType.C_GameStartPacket, MakePacket<C_GameStartPacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_GameStartPacket, PacketHandler.Instance.C_GameStartPacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_MonsterPurchasePacket, MakePacket<C_MonsterPurchasePacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_MonsterPurchasePacket, PacketHandler.Instance.C_MonsterPurchasePacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_MonsterCreatePacket, MakePacket<C_MonsterCreatePacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_MonsterCreatePacket, PacketHandler.Instance.C_MonsterCreatePacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_SetPositionPacket, MakePacket<C_SetPositionPacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_SetPositionPacket, PacketHandler.Instance.C_SetPositionPacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_ConfirmMovePacket, MakePacket<C_ConfirmMovePacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_ConfirmMovePacket, PacketHandler.Instance.C_ConfirmMovePacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_AttackDistancePacket, MakePacket<C_AttackDistancePacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_AttackDistancePacket, PacketHandler.Instance.C_AttackDistancePacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_HitPacket, MakePacket<C_HitPacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_HitPacket, PacketHandler.Instance.C_HitPacketHandler);
+
+        m_MakePacketDict.Add((ushort)PacketType.C_ChangeTargetPacket, MakePacket<C_ChangeTargetPacket>);
+        m_RunFunctionDict.Add((ushort)PacketType.C_ChangeTargetPacket, PacketHandler.Instance.C_ChangeTargetPacketHandler);
+    }
+
+   // 제네릭으로 패킷의 종류마다 컴파일 타임에 생성 
+    T MakePacket<T>(ArraySegment<byte> buffer) where T: IPacket, new()
+    {
+        T pkt = new T();
+        pkt.Read(buffer);
+
+        return pkt; 
+    }
+}
+```
+	
+</details>
+
