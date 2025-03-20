@@ -1214,3 +1214,115 @@ public class PacketManager
 	
 </details>
 
+# Data Manager
+* json 데이터를 파싱해서
+
+<details>
+<summary>Json Data</summary>
+	
+```cs
+// json 파일 
+{
+  "monsterStat": [
+    {
+      "name": "BaseMonster", // 몬스터 이름 
+      "monsterType": "1", // 몬스터 근거리1 원거리2
+      "hp": "100.0", // 몬스터 체력
+      "attackRange": "4.0", // 공격 범위
+      "attackRangeCorrectionValue": "2.0", // 공격 범위 보정값
+      "attackDistance": "6.0", // 타겟과의 공격거리 
+      "defaultAttackDamage": "50.0", // 기본 데미지 값 
+      "moveSpeed": "5.0", // 기본 이동 스피드 
+      "projectTileSpeed": "0.0", // 투사체 속도
+      "monsterPrice": "100.0" // 몬스터 구매 가격
+    },
+    {
+      "name": "Skeleton",
+      "monsterType": "1",
+      "hp": "100.0",
+      "attackRange": "4.0",
+      "attackRangeCorrectionValue": "2.0",
+      "attackDistance": "6.0",
+      "defaultAttackDamage": "50.0",
+      "moveSpeed": "5.0",
+      "projectTileSpeed": "0.0",
+      "monsterPrice": "300.0"
+    },
+    {
+      "name": "Mage",
+      "monsterType": "2",
+      "hp": "100.0",
+      "attackRange": "10.0",
+      "attackRangeCorrectionValue": "2.0",
+      "attackDistance": "20.0",
+      "defaultAttackDamage": "50.0",
+      "moveSpeed": "3.0",
+      "projectTileSpeed": "10.0",
+      "monsterPrice": "500.0"
+    },
+    {
+      "name": "Bee",
+      "monsterType": "1",
+      "hp": "100.0",
+      "attackRange": "2.5",
+      "attackRangeCorrectionValue": "2.0",
+      "attackDistance": "3.0",
+      "defaultAttackDamage": "50.0",
+      "moveSpeed": "5.0",
+      "projectTileSpeed": "0.0",
+      "monsterPrice": "300.0"
+    },
+    {
+      "name": "BattleBee",
+      "monsterType": "2",
+      "hp": "100.0",
+      "attackRange": "7.0",
+      "attackRangeCorrectionValue": "2.0",
+      "attackDistance": "14.0",
+      "defaultAttackDamage": "50.0",
+      "moveSpeed": "10.0",
+      "projectTileSpeed": "10.0",
+      "monsterPrice": "700.0"
+    },
+    {
+      "name": "Beholder",
+      "monsterType": "2",
+      "hp": "100.0",
+      "attackRange": "15.0",
+      "attackRangeCorrectionValue": "2.0",
+      "attackDistance": "30.0",
+      "defaultAttackDamage": "50.0",
+      "moveSpeed": "10.0",
+      "projectTileSpeed": "10.0",
+      "monsterPrice": "800.0"
+    },
+    {
+      "name": "Specter",
+      "monsterType": "2",
+      "hp": "100.0",
+      "attackRange": "2.5",
+      "attackRangeCorrectionValue": "2.0",
+      "attackDistance": "5.0",
+      "defaultAttackDamage": "50.0",
+      "moveSpeed": "10.0",
+      "projectTileSpeed": "0.0",
+      "monsterPrice": "500.0"
+    },
+    {
+      "name": "Golem",
+      "monsterType": "1",
+      "hp": "100.0",
+      "attackRange": "3.0",
+      "attackRangeCorrectionValue": "2.0",
+      "attackDistance": "6.0",
+      "defaultAttackDamage": "50.0",
+      "moveSpeed": "3.0",
+      "projectTileSpeed": "0.0",
+      "monsterPrice": "600.0"
+    }
+  ]
+}
+```
+	
+</details>
+
