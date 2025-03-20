@@ -1215,7 +1215,8 @@ public class PacketManager
 </details>
 
 # Data Manager
-* json 데이터를 파싱해서
+* json 데이터를 파싱해서 딕셔너리에 저장
+* 싱글턴 패턴으로 제작해서 전역으로 사용 가능 
 
 <details>
 <summary>Json Data</summary>
@@ -1324,5 +1325,115 @@ public class PacketManager
 }
 ```
 	
+</details>
+
+<details>
+<summary>Data Manager</summary>
+	
+```cs
+// 딕셔너리를 반환 하도록 인터페이스로 정의
+public interface IDict<Key, Value>
+{
+    Dictionary<Key, Value> MakeDict();
+}
+
+// 위의 json 데이터와 일치하게 변수 이름 설정
+[Serializable]
+public class MonsterStat
+{
+    public string name;
+    public float hp;
+    public float attackRange;
+    public float attackRangeCorrectionValue;
+    public float attackDistance;
+    public float defaultAttackDamage;
+    public float moveSpeed;
+    public float projectTileSpeed;
+    public MonsterType monsterType;
+    public int monsterPrice;
+}
+
+[Serializable]
+public class MonsterData : IDict<string, MonsterStat>
+{
+    // json 파일이랑 이름을 맞춰줌(MonsterStat)
+    public List<MonsterStat> monsterStat = new List<MonsterStat>();
+
+    // json에서 파싱해온 데이터를 딕셔너리에 넣어줌
+    public Dictionary<string, MonsterStat> MakeDict()
+    {
+        Dictionary<string, MonsterStat> dict = new Dictionary<string, MonsterStat>();
+        foreach (MonsterStat stat in monsterStat)
+        {
+            dict.Add(stat.name, stat);
+        }
+        return dict;
+    }
+}
+
+// json 데이터를 파싱
+public class DataManager
+{
+    // json 데이터를 담을 딕셔너리 생성 
+    public Dictionary<string, MonsterStat> monsterDict { get; private set; } = new Dictionary<string, MonsterStat>();
+
+    // json data Load
+    public void Init()
+    {
+        monsterDict = LoadJson<MonsterData, string, MonsterStat>("MonsterData").MakeDict();
+    }
+
+    // 원하는 경로에서 json 데이터를 읽어와 딕셔너리 형태로 반환
+    Loader LoadJson<Loader, Key, Value>(string path) where Loader : IDict<Key, Value>
+    {
+        TextAsset textAsset = Managers.Resource.Load<TextAsset>($"GameData/{path}");
+        return JsonUtility.FromJson<Loader>(textAsset.text);
+    }
+}
+
+// 모든 싱글턴은 하나의 매니저에서 통합 관리
+public class Managers : MonoBehaviour
+{
+    private static Managers _instance;
+    public static Managers Instance { get { Init(); return _instance; } }
+
+    private ResourceManager _resource = new ResourceManager();
+    private ObjectManager _monster = new ObjectManager();
+    // Data Manager도 여기서 관리
+    private DataManager _data = new DataManager();
+    private SpawnManager _spawn = new SpawnManager();
+    
+    public static ResourceManager Resource { get { return Instance._resource; } }
+    public static ObjectManager Monster { get { return Instance._monster; } }
+    public static DataManager Data { get { return Instance._data; } }
+    public static SpawnManager Spawn { get { return Instance._spawn; } }
+    
+    private void Start()
+    {
+        Init();
+    }
+
+    private static void Init()
+    {
+        if (_instance == null)
+        {
+            GameObject go = GameObject.Find("@Managers");
+
+            if (go == null)
+            {
+                go = new GameObject { name = "@Managers" };
+                go.AddComponent<Managers>();
+            }
+
+            DontDestroyOnLoad(go);
+            _instance = go.GetComponent<Managers>();
+
+            // 매니저들 초기화 작업
+            _instance._data.Init();
+            _instance._spawn.Init();
+        }
+    }
+```
+
 </details>
 
