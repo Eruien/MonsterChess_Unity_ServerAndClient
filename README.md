@@ -11,8 +11,8 @@
 * 사용언어 및 개발환경 : C#, Unity
 
 # Behavior Tree
-* 몬스터의 AI를 Behavior Tree를 이용해 만들었습니다.
-* Behavior Tree는 서버에서 돌아갑니다.
+* 몬스터의 AI를 Behavior Tree로 구성
+* Behavior Tree는 서버에서 작동
   
 <img src="Image/BehaviorTree.gif" width="600" height="350"/>
 
@@ -655,7 +655,7 @@ public override void Death()
 </details>
 
 # Server
-* 비동기 함수 Recv, Send를 이용해 패킷을 주고 받습니다.
+* 비동기 함수를 이용해 패킷을 주고받음
   
 <img src="Image/ServerAndClient.gif" width="600" height="350"/>
 
@@ -1043,7 +1043,7 @@ public class C_GameStartPacket : IPacket
     }
 }
 
-// 추상 팩토리 패턴을 이용해 여러 패킷의 생성 함수가 딕셔너리에 저장되어 있다.
+// 팩토리 메서드 패턴을 이용해 여러 패킷의 생성 함수가 딕셔너리에 저장되어 있다.
 public class PacketManager
 {
     static PacketManager m_PacketMgr = new PacketManager();
