@@ -11,7 +11,7 @@
 * 사용언어 및 개발환경 : C#, Unity
 
 # Behavior Tree
-* 몬스터의 AI를 Behavior Tree로 구성
+* 많은 수의 몬스터 AI를 효율적으로 관리하기 위해 Behavior Tree로 구성
 * Behavior Tree는 서버에서 작동
   
 <img src="Image/BehaviorTree.gif" width="600" height="350"/>
@@ -654,8 +654,9 @@ public override void Death()
 
 </details>
 
-# Server
-* 비동기 함수를 이용해 패킷을 주고받음
+# IOCP Server
+* 일반적인 소켓 함수를 사용할 경우 블로킹 되기 때문에 비동기 소켓 함수로 작업 처리
+* 서버에서 부하를 피하려고 0.25초마다 패킷을 모아서 보냄
   
 <img src="Image/ServerAndClient.gif" width="600" height="350"/>
 
@@ -1158,7 +1159,7 @@ public class PacketManager
 </details>
 
 # 팩토리 메서드 패턴
-* 클래스의 생성을 자신이 생성하는게 아니라 다른 메서드에게 위임
+* 생성해야 될 패킷이 많기 때문에 함수 형태로 생성을 위임
   
 <details>  
 <summary>팩토리 메서드 패턴 코드</summary>
@@ -1215,6 +1216,7 @@ public class PacketManager
 </details>
 
 # Data Manager
+* 데이터를 직관적이고 편리하게 관리하기 위해 json 파일을 사용하여 관리
 * Json 데이터를 파싱해서 딕셔너리에 저장
 * 싱글턴 패턴으로 제작해서 전역으로 사용 가능 
 
